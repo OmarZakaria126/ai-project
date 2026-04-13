@@ -1,0 +1,8 @@
+EXTERNAL_FILE = "graduation_projects_8000.xlsx"
+PREVIOUS_FILE = "All_Projectsfadlazb.xlsx"
+
+RECOMMEND_THRESHOLD = 0.55
+DUPLICATION_THRESHOLD = 0.6
+TOP_K_RECOMMEND = 3
+TOP_K_SIMILAR = 5
+
