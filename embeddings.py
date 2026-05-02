@@ -1,9 +1,6 @@
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
-
-def create_embeddings(projects):
+def create_embeddings(projects, model):
     return model.encode(
         [f"{p['Project Name']} {p['Introduction']}" for p in projects]
     )

@@ -6,30 +6,27 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 app = FastAPI(title="Graduation Project Recommendation API")
 
-# تحميل الموديل مرة واحدة
+# تحميل الموديل مرة واحدة فقط
 model = None
 
 def get_model():
     global model
     if model is None:
-        print("Loading model...")  # debug
-        model = SentenceTransformer("all-MiniLM-L6-v2")
+        print("Loading model...")
+        model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
     return model
 
 RECOMMEND_THRESHOLD = 0.55
 DUPLICATION_THRESHOLD = 0.6
 TOP_K_RECOMMEND = 3
 
-
 class ProjectRequest(BaseModel):
     problem: str
     previousIdeas: list[str]
 
-
 @app.get("/")
 def home():
     return {"message": "AI service is running 🚀"}
-
 
 @app.post("/check")
 def check_duplication(request: ProjectRequest):
