@@ -1,19 +1,20 @@
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+import re
 
-model = SentenceTransformer("paraphrase-MiniLM-L3-v2")  # أخف موديل
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', '', text)
+    return text
 
-def create_embeddings(projects):
-    texts = [
-        f"{p['Project Name']} {p['Introduction']}"
-        for p in projects
-    ]
+vectorizer = TfidfVectorizer(
+    stop_words='english',
+    ngram_range=(1, 2),   # 👈 مهم جدًا للدقة
+    max_features=5000
+)
 
-    return model.encode(
-        texts,
-        batch_size=1,
-        convert_to_numpy=True
-    )
+def create_embeddings(texts):
+    cleaned = [clean_text(t) for t in texts]
+    return vectorizer.fit_transform(cleaned)
 
-def get_similarity(vector, matrix):
-    return cosine_similarity(vector, matrix)[0]
+def transform_input(text):
+    return vectorizer.transform([clean_text(text)])

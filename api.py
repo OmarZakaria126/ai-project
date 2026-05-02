@@ -2,22 +2,9 @@ import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sklearn.metrics.pairwise import cosine_similarity
+from embeddings import create_embeddings, transform_input
 
-app = FastAPI(title="Graduation Project Recommendation API")
-
-model = None
-
-def get_model():
-    global model
-    if model is None:
-        from sentence_transformers import SentenceTransformer  # 👈 مهم هنا
-        print("Loading model...")
-        model = SentenceTransformer("paraphrase-MiniLM-L3-v2")
-    return model
-
-RECOMMEND_THRESHOLD = 0.55
-DUPLICATION_THRESHOLD = 0.6
-TOP_K_RECOMMEND = 3
+app = FastAPI()
 
 class ProjectRequest(BaseModel):
     problem: str
@@ -33,15 +20,7 @@ def check_duplication(request: ProjectRequest):
     if not request.problem:
         return {"error": "Problem text is empty"}
 
-    model = get_model()
-
-    user_embedding = model.encode(
-        [request.problem],
-        batch_size=1,
-        convert_to_numpy=True
-    )
-
-    previous = request.previousIdeas[:10]
+    previous = request.previousIdeas[:30]
 
     if not previous:
         return {
@@ -50,15 +29,12 @@ def check_duplication(request: ProjectRequest):
             "duplicates": []
         }
 
-    previous_embeddings = model.encode(
-        previous,
-        batch_size=1,
-        convert_to_numpy=True
-    )
+    matrix = create_embeddings(previous)
+    user_vec = transform_input(request.problem)
 
-    similarities = cosine_similarity(user_embedding, previous_embeddings)[0]
+    similarities = cosine_similarity(user_vec, matrix)[0]
 
-    top_indices = np.argsort(similarities)[::-1][:TOP_K_RECOMMEND]
+    top_indices = np.argsort(similarities)[::-1][:5]
 
     recommendations = []
     duplicates = []
@@ -73,7 +49,7 @@ def check_duplication(request: ProjectRequest):
 
         recommendations.append(item)
 
-        if score >= DUPLICATION_THRESHOLD:
+        if score >= 0.65:  # 👈 رفعنا threshold للدقة
             duplicates.append(item)
 
     return {
