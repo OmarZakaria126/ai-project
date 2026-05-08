@@ -13,12 +13,11 @@ app = FastAPI(title="Graduation Project Recommendation API")
 # ==============================
 class ProjectItem(BaseModel):
     id: str
-    abstract: str
+    description: str   # ✅ بدل abstract
 
 class ProjectRequest(BaseModel):
     problem: str
     projects: List[ProjectItem]
-
 
 # ==============================
 # Text Cleaning
@@ -28,7 +27,6 @@ def clean_text(text):
     text = re.sub(r'[^\w\s]', '', text)
     text = re.sub(r'\d+', '', text)
     return text.strip()
-
 
 # ==============================
 # Vectorizer
@@ -41,38 +39,41 @@ def get_vectorizer():
         sublinear_tf=True
     )
 
-
 # ==============================
 # Routes
 # ==============================
-@app.get("/")
-def home():
-    return {"message": "AI service is running 🚀"}
-
-
 @app.post("/check")
 def check_duplication(request: ProjectRequest):
 
     if not request.problem:
-        return {"error": "Problem text is empty"}
+        return {"results": []}
 
-    # 🔹 تنظيف النص
     user_text = clean_text(request.problem)
 
-    project_texts = [
-        clean_text(p.abstract) for p in request.projects
+    # ✅ فلترة الداتا
+    valid_projects = [
+        p for p in request.projects
+        if p.description and p.description.strip() != ""
     ]
 
-    # 🔹 Vectorization
+    if not valid_projects:
+        return {"results": []}
+
+    project_texts = [
+        clean_text(p.description) for p in valid_projects
+    ]
+
+    # 🔥 أهم fix
+    all_texts = project_texts + [user_text]
+
     vectorizer = get_vectorizer()
+    matrix = vectorizer.fit_transform(all_texts)
 
-    project_matrix = vectorizer.fit_transform(project_texts)
-    user_vec = vectorizer.transform([user_text])
+    project_matrix = matrix[:-1]
+    user_vec = matrix[-1]
 
-    # 🔹 Similarity
     similarities = cosine_similarity(user_vec, project_matrix)[0]
 
-    # 🔹 ترتيب النتائج
     sorted_indices = np.argsort(similarities)[::-1]
 
     results = []
@@ -80,12 +81,11 @@ def check_duplication(request: ProjectRequest):
     for idx in sorted_indices:
         score = float(similarities[idx])
 
-        # تجاهل القيم الصغيرة جدًا
-        if score < 0.1:
+        if score < 0.05:
             continue
 
         results.append({
-            "id": request.projects[idx].id,
+            "id": valid_projects[idx].id,
             "similarity": round(score * 100, 2)
         })
 
